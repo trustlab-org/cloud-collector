@@ -1,0 +1,36 @@
+http:
+  address: 0.0.0.0:4195
+
+input:
+  google_workspace:
+    credentials_file: ${GWS_CREDENTIALS_FILE:./secrets/google-sa.json}
+    subject: ${GWS_ADMIN_SUBJECT:admin@example.ac.in}
+    org: ${COLLECTOR_ORG:example-university}
+    server: ${GWS_DOMAIN:example.ac.in}
+    applications: [ login ]
+    poll_interval: 1m
+    initial_lookback: 24h
+    checkpoint:
+      type: file
+      path: ${COLLECTOR_STATE_DIR:./state}/checkpoints.json
+
+output:
+  switch:
+    cases:
+      - check: env("COLLECTOR_OUTPUT") == "kafka"
+        output:
+          kafka_franz:
+            seed_brokers: [ "${KAFKA_BROKERS:localhost:9094}" ]
+            topic: ${KAFKA_TOPIC:google_workspace}
+            key: ${! meta("event_id") }
+            max_in_flight: 1
+      - output:
+          stdout:
+            codec: lines
+
+metrics:
+  prometheus: {}
+
+logger:
+  level: ${LOG_LEVEL:INFO}
+  format: logfmt
